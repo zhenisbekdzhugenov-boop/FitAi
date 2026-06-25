@@ -331,7 +331,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:24px;heigh
   <div id="hstreak"></div>
   <div style="padding:14px 16px 4px;font-size:15px;font-weight:700">Последние тренировки</div>
   <div id="hwlog" style="padding:0 16px 14px"></div>
-  <div style="padding:0 16px 20px"><button class="btn btn-lime" onclick="go('plan')">⚡ Создать план тренировок</button></div>
+  <div style="padding:0 16px 20px"><button class="btn btn-lime" onclick="newPlan()">⚡ Создать план тренировок</button></div>
   <div style="height:20px"></div>
 </div>
 
@@ -743,7 +743,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:24px;heigh
 
 <nav class="nav">
   <div class="ni on" onclick="go('home')" id="n-home"><div class="ni-i">🏠</div><div class="ni-l">Главная</div></div>
-  <div class="ni" onclick="go('plan')" id="n-plan"><div class="ni-i">⚡</div><div class="ni-l">Программа</div></div>
+  <div class="ni" onclick="goToPlan()" id="n-plan"><div class="ni-i">⚡</div><div class="ni-l">Программа</div></div>
   <div class="ni" onclick="go('progress')" id="n-progress"><div class="ni-i">📊</div><div class="ni-l">Прогресс</div></div>
   <div class="ni" onclick="go('mind')" id="n-mind"><div class="ni-i">🧠</div><div class="ni-l">Разум</div></div>
   <div class="ni" onclick="go('profile')" id="n-profile"><div class="ni-i">👤</div><div class="ni-l">Профиль</div></div>
@@ -893,6 +893,38 @@ function go(p){
   if(p==='mind'){
     document.querySelectorAll('.mtab').forEach((t,i)=>t.classList.toggle('on',i===0));
     document.querySelectorAll('.mind-section').forEach((s,i)=>s.classList.toggle('on',i===0));
+  }
+}
+
+// Создать новый план — сбрасывает все состояния
+function newPlan(){
+  window._editingPlanId=null;
+  window._plan=null;
+  go('plan');
+  showProg('workout');
+  document.getElementById('planView').classList.remove('on');
+  document.getElementById('wkm').classList.remove('on');
+  document.getElementById('wmDone').classList.remove('on');
+  document.getElementById('wiz').style.display='flex';
+  cs=1;
+  document.querySelectorAll('.ws').forEach(x=>x.classList.remove('on'));
+  document.getElementById('ws1').classList.add('on');
+  rDots();
+}
+
+// Умный переход на страницу программы
+function goToPlan(){
+  go('plan');
+  showProg('workout');
+  // Если есть активный план — показать его, иначе wizard
+  if(window._plan && document.getElementById('planView').classList.contains('on')){
+    return; // уже показан план
+  }
+  // Если нет текущего плана в памяти — показать wizard
+  if(!window._plan){
+    document.getElementById('planView').classList.remove('on');
+    document.getElementById('wkm').classList.remove('on');
+    document.getElementById('wiz').style.display='flex';
   }
 }
 function toast(m,d=2500){const t=document.getElementById('toast');t.textContent=m;t.classList.add('on');setTimeout(()=>t.classList.remove('on'),d);}
@@ -1193,10 +1225,11 @@ function savePlan(){
 }
 
 function resetPlan(){
+  window._editingPlanId=null;
+  window._plan=null;
   document.getElementById('planView').classList.remove('on');
   document.getElementById('wkm').classList.remove('on');
   document.getElementById('wiz').style.display='flex';
-  window._plan=null;
   cs=1;document.querySelectorAll('.ws').forEach(x=>x.classList.remove('on'));
   document.getElementById('ws1').classList.add('on');rDots();
 }
