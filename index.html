@@ -271,14 +271,41 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:24px;heigh
 .mind-subgroup:first-child{margin-top:0}
 .mind-start-btn{display:inline-flex;align-items:center;gap:6px;background:var(--purple);color:#fff;border:none;border-radius:8px;padding:9px 18px;font-size:13px;font-weight:600;cursor:pointer;margin-top:10px;font-family:Inter,sans-serif}
 .mind-start-btn:active{transform:scale(.97)}
-.mind-phase{font-size:13px;font-weight:700;color:#a78bfa;margin:4px 0 16px;text-transform:uppercase;letter-spacing:1px}
-.mind-instruction{font-size:14px;color:var(--t2);line-height:1.6;margin-bottom:14px;min-height:60px;transition:all .4s}
-.mind-big-timer{font-family:'JetBrains Mono',monospace;font-size:52px;font-weight:700;color:#a78bfa;margin:6px 0}
-.mind-step-dots{display:flex;gap:6px;justify-content:center;margin-bottom:14px;flex-wrap:wrap}
+.mind-phase{font-size:12px;font-weight:700;color:#a78bfa;margin:3px 0 10px;text-transform:uppercase;letter-spacing:1px}
+.mind-instruction{font-size:14px;color:var(--t2);line-height:1.6;margin-bottom:14px;min-height:40px;transition:all .4s}
+.mind-big-timer{font-family:'JetBrains Mono',monospace;font-size:44px;font-weight:700;color:#a78bfa;margin:4px 0}
+.mind-step-dots{display:flex;gap:6px;justify-content:center;margin-bottom:8px;flex-wrap:wrap}
 .mind-step-dot{width:8px;height:8px;border-radius:50%;background:var(--b2);transition:all .3s}
 .mind-step-dot.on{background:#8b5cf6;transform:scale(1.3)}
 .mind-step-dot.done{background:#9fcc1a}
-.mind-canvas-wrap{background:#0d0a18;border-radius:12px;overflow:hidden;margin-bottom:14px}
+.mind-canvas-wrap{background:#0d0a18;border-radius:12px;overflow:hidden;margin-bottom:8px}
+
+/* ── Mind Modal Adaptive Layout ── */
+#mindModal .ms {
+  height: 96dvh;
+  height: 96vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+#mindModal .mh { flex-shrink: 0; }
+#mindExName { flex-shrink: 0; font-size: clamp(14px, 4vw, 18px); }
+.mind-phase { flex-shrink: 0; margin: 2px 0 clamp(6px,1.5dvh,12px) !important; font-size: clamp(10px,3vw,13px); }
+.mind-canvas-wrap { flex-shrink: 1; min-height: 60px; margin-bottom: clamp(4px,1dvh,10px) !important; }
+.mind-canvas-wrap canvas { height: clamp(60px,15dvh,110px) !important; }
+.mind-instruction { flex-shrink: 1; font-size: clamp(12px,3.5vw,14px); min-height: 32px !important; margin-bottom: clamp(6px,1.5dvh,14px); overflow: hidden; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; }
+.mind-big-timer { flex-shrink: 0; font-size: clamp(36px,10dvh,52px) !important; margin: clamp(2px,1dvh,6px) 0 !important; }
+.mind-step-dots { flex-shrink: 0; margin-bottom: clamp(4px,1dvh,10px) !important; }
+#mindModal [style*="display:flex;gap:10px"] { flex-shrink: 0; }
+
+/* ── Kegel Modal Adaptive ── */
+#kegelModal .ms {
+  max-height: 94dvh;
+  max-height: 94vh;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+#kegelCanvas { height: clamp(100px, 20dvh, 160px) !important; }
 </style>
 </head>
 <body>
@@ -695,17 +722,17 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:24px;heigh
 
 <!-- MIND MODAL — FIX: увеличен max-height для полного отображения -->
 <div class="mo" id="mindModal" onclick="if(event.target===this)closeMindModal()">
-  <div class="ms" style="background:#100d1a;border-top:1px solid #3d2a6e;max-height:96dvh;max-height:96vh;overflow-y:auto;padding-bottom:calc(20px + env(safe-area-inset-bottom,0px))">
+  <div class="ms" style="background:#100d1a;border-top:1px solid #3d2a6e;height:96dvh;height:96vh;display:flex;flex-direction:column;overflow:hidden;padding-bottom:calc(16px + env(safe-area-inset-bottom,0px))">
     <div class="mh" style="background:#3d2a6e"></div>
     <div style="font-size:18px;font-weight:800;margin-bottom:2px" id="mindExName">Упражнение</div>
     <div class="mind-phase" id="mindPhase">Подготовка</div>
     <div class="mind-canvas-wrap">
-      <canvas id="mindCanvas" style="width:100%;display:block;height:110px"></canvas>
+      <canvas id="mindCanvas" style="width:100%;display:block;height:clamp(70px,18dvh,110px)"></canvas>
     </div>
     <div class="mind-instruction" id="mindInstruction">Займи удобное положение</div>
     <div class="mind-big-timer" id="mindTimer" style="font-family:'JetBrains Mono',monospace;font-size:56px;font-weight:700;color:#a78bfa;margin:6px 0">—</div>
     <div class="mind-step-dots" id="mindDots"></div>
-    <div style="display:flex;gap:10px;margin-top:8px">
+    <div style="display:flex;gap:10px;margin-top:4px">
       <button onclick="closeMindModal()" style="flex:1;padding:13px;border-radius:12px;border:1.5px solid var(--b);background:var(--s2);color:var(--t2);font-size:14px;font-weight:700;cursor:pointer;font-family:Inter,sans-serif">✕ Закрыть</button>
       <button id="mindBtn" onclick="toggleMindEx()" style="flex:1;padding:13px;border-radius:12px;border:none;background:#8b5cf6;color:#fff;font-size:14px;font-weight:700;cursor:pointer;font-family:Inter,sans-serif">▶ Старт</button>
     </div>
