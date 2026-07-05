@@ -1118,6 +1118,78 @@ function getPlan(goal,lvl,plc,days,fat,vfat,water,prot,musc,w,h){
   });
 }
 
+
+// ── БАЗА ПРОДУКТОВ (ккал/белок на 100г СУХОГО/СЫРОГО веса; шт — на 1 штуку) ──
+const FOODS={
+ oats:{n:'Овсяные хлопья',k:350,b:12},
+ buck:{n:'Гречка (сухая)',k:330,b:12.6},
+ rice:{n:'Рис (сухой)',k:330,b:7},
+ chicken:{n:'Куриная грудка',k:110,b:23},
+ fish:{n:'Минтай / хек',k:80,b:17},
+ egg:{n:'Яйцо',k:78,b:6.5,unit:'шт'},
+ tvorog:{n:'Творог 5%',k:120,b:17},
+ kefir:{n:'Кефир 2.5%',k:50,b:3},
+ milk:{n:'Молоко 2.5%',k:52,b:2.8},
+ banana:{n:'Банан',k:105,b:1.3,unit:'шт'},
+ apple:{n:'Яблоко',k:90,b:0.5,unit:'шт'},
+ bread:{n:'Хлеб чёрный',k:210,b:6.5},
+ veg:{n:'Овощи (салат)',k:25,b:1},
+ oil:{n:'Масло растит.',k:900,b:0},
+ nuts:{n:'Орехи',k:650,b:15},
+};
+// ── МЕНЮ-ШАБЛОНЫ по целям (порции масштабируются под калораж) ──
+const MENUS={
+ mass:[
+  {name:'🌅 Завтрак',items:[['oats',90],['milk',250],['banana',1],['nuts',15]]},
+  {name:'🍎 Перекус',items:[['tvorog',200],['apple',1]]},
+  {name:'🍛 Обед',items:[['buck',100],['chicken',200],['veg',150],['oil',10]]},
+  {name:'🥪 Полдник',items:[['egg',3],['bread',60]]},
+  {name:'🌆 Ужин',items:[['rice',80],['fish',250],['veg',150],['oil',10]]},
+  {name:'🌙 На ночь',items:[['kefir',250]]},
+ ],
+ cut:[
+  {name:'🌅 Завтрак',items:[['oats',50],['egg',2],['apple',1]]},
+  {name:'🍛 Обед',items:[['buck',70],['chicken',180],['veg',200],['oil',7]]},
+  {name:'🍎 Перекус',items:[['tvorog',180]]},
+  {name:'🌆 Ужин',items:[['fish',250],['veg',250],['oil',7]]},
+  {name:'🌙 На ночь',items:[['kefir',250]]},
+ ],
+ maintain:[
+  {name:'🌅 Завтрак',items:[['oats',70],['milk',200],['banana',1]]},
+  {name:'🍛 Обед',items:[['rice',80],['chicken',180],['veg',150],['oil',10]]},
+  {name:'🍎 Перекус',items:[['tvorog',150],['nuts',15]]},
+  {name:'🌆 Ужин',items:[['buck',70],['egg',2],['veg',200],['oil',7]]},
+  {name:'🌙 На ночь',items:[['kefir',250]]},
+ ]
+};
+// ── ГЕНЕРАТОР МЕНЮ: масштабирует порции под целевые калории ──
+function getMealPlan(targetCal,goal){
+  const isFat=goal.includes('похуд')||goal.includes('жир')||goal.includes('рельеф')||goal.includes('сушк');
+  const isMass=goal.includes('масс')||goal.includes('сил');
+  const key=isFat?'cut':isMass?'mass':'maintain';
+  const menu=MENUS[key];
+  let baseK=0;
+  menu.forEach(m=>m.items.forEach(([f,q])=>{
+    const fd=FOODS[f];baseK+=fd.unit?q*fd.k:q/100*fd.k;
+  }));
+  const scale=targetCal/baseK;
+  const meals=menu.map(m=>{
+    const items=m.items.map(([f,q])=>{
+      const fd=FOODS[f];
+      let sq;
+      if(fd.unit)sq=Math.max(1,Math.round(q*scale));
+      else sq=Math.max(5,Math.round(q*scale/5)*5);
+      const kcal=fd.unit?sq*fd.k:sq/100*fd.k;
+      const prot=fd.unit?sq*fd.b:sq/100*fd.b;
+      return{name:fd.n,qty:sq,unit:fd.unit||'г',kcal:Math.round(kcal),prot};
+    });
+    return{name:m.name,items,kcal:items.reduce((s,i)=>s+i.kcal,0)};
+  });
+  const totK=meals.reduce((s,m)=>s+m.kcal,0);
+  const totP=Math.round(meals.reduce((s,m)=>s+m.items.reduce((x,i)=>x+i.prot,0),0));
+  return{meals,totK,totP};
+}
+
 function getNutr(goal,w,h,fat,vfat,water,prot,musc,gender){
   const bmi=h>0?+(w/Math.pow(h/100,2)).toFixed(1):0;
   const isFat=goal.includes('похуд')||goal.includes('жир')||goal.includes('рельеф');
@@ -1141,7 +1213,8 @@ function getNutr(goal,w,h,fat,vfat,water,prot,musc,gender){
   if(S.smoke&&S.smoke.includes('Курю'))nutrItems.push('🚬 Больше витамина C: ягоды, цитрусы');
   if(S.alcohol&&S.alcohol.includes('Регулярно'))nutrItems.push('🍷 Алкоголь блокирует синтез белка на 24ч');
   const waterItems=[`Минимум ${waterL}л воды в день`,'До тренировки: 400-600мл за 1-2 часа','Во время: 150-250мл каждые 15-20 мин','После: 500мл в первые 30 минут'];
-  return{nutrItems,waterItems,bmi};
+  const mealPlan=getMealPlan(safeCal,goal);
+  return{nutrItems,waterItems,bmi,mealPlan};
 }
 
 function buildPlan(){
@@ -1196,6 +1269,18 @@ function renderPlanBody(days,nutr){
   if(nutr){
     html+=`<div class="nutr-card"><div class="nutr-title">🍽️ Питание</div>${nutr.nutrItems.map(i=>`<div class="nutr-item">${i}</div>`).join('')}</div>`;
     html+=`<div class="water-card"><div class="water-title">💧 Вода</div>${nutr.waterItems.map(i=>`<div class="nutr-item" style="color:var(--t2)">${i}</div>`).join('')}</div>`;
+    if(nutr.mealPlan&&nutr.mealPlan.meals){
+      const mp=nutr.mealPlan;
+      html+=`<div style="margin:0 16px 12px;background:linear-gradient(135deg,rgba(200,241,53,.05),transparent);border:1px solid rgba(200,241,53,.2);border-radius:14px;padding:14px">
+        <div style="font-size:13px;font-weight:700;color:var(--lime);margin-bottom:3px">🥗 Меню на день · ${mp.totK} ккал · белок ${mp.totP}г</div>
+        <div style="font-size:11px;color:var(--t3);margin-bottom:12px;line-height:1.4">⚖️ Крупы взвешивай сухими, мясо и рыбу — сырыми</div>
+        ${mp.meals.map(m=>`<div style="margin-bottom:11px">
+          <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px"><span style="font-size:13px;font-weight:600">${m.name}</span><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--t3)">${m.kcal} ккал</span></div>
+          ${m.items.map(i=>`<div style="display:flex;justify-content:space-between;font-size:12px;color:var(--t2);padding:2px 0 2px 10px"><span>${i.name}</span><b style="font-family:'JetBrains Mono',monospace;color:var(--text)">${i.qty} ${i.unit}</b></div>`).join('')}
+        </div>`).join('')}
+        <div style="font-size:11px;color:var(--t3);line-height:1.5;padding-top:8px;border-top:1px solid var(--b)">🔄 Замены (та же граммовка): гречка ↔ рис ↔ макароны · минтай ↔ грудка ↔ тунец конс. · творог 180г ↔ 2 яйца + кефир 200г</div>
+      </div>`;
+    }
     if(nutr.bmi>0){
       const bmiColor=nutr.bmi<18.5?'var(--blue)':nutr.bmi<25?'var(--green)':nutr.bmi<30?'var(--orange)':'var(--red)';
       const bmiLabel=nutr.bmi<18.5?'Дефицит веса':nutr.bmi<25?'Норма':nutr.bmi<30?'Избыточный вес':'Ожирение';
@@ -1426,7 +1511,18 @@ function setTT(t){
   document.getElementById('ttRst').classList.toggle('on',t==='rest');
   document.getElementById('rmMode').style.display=t==='reps'?'block':'none';
   document.getElementById('tmMode').style.display=t!=='reps'?'block':'none';
+  if(t==='reps'){
+    // Скрываем label режима в режиме повторений
+    const ml=document.getElementById('modeLabel');
+    if(ml)ml.style.display='none';
+    const mb=document.getElementById('modeBar');
+    if(mb)mb.className='mode-bar';
+  }
   if(t==='rest'){const ex=WM.exs[WM.idx]||{};WM.total=ex.rest||60;WM.sec=WM.total;WM.mode='rest';rTD(WM.sec,WM.total,'rest');document.getElementById('tsets').style.display='none';}
+  if(t==='time'){
+    const ex=WM.exs[WM.idx]||{};
+    if(ex.time&&WM.mode!=='rest'){WM.total=ex.time;WM.sec=ex.time;WM.mode='work';rTD(WM.sec,WM.total,'work');}
+  }
 }
 function rSets(){document.getElementById('sdots').innerHTML=Array.from({length:WM.tsets},(_,i)=>`<div class="sdot ${i+1<WM.cset?'done':i+1===WM.cset?'cur':''}">${i+1}</div>`).join('');}
 function rTSets(){document.getElementById('tsdots').innerHTML=Array.from({length:WM.tsets},(_,i)=>`<div class="sdot ${i+1<WM.cset?'done':i+1===WM.cset?'cur':''}">${i+1}</div>`).join('');document.getElementById('tsets').style.display='flex';}
@@ -1435,6 +1531,10 @@ function rTD(sec,total,mode){
   const m=Math.floor(sec/60),s=sec%60;
   const tel=document.getElementById('ttime');tel.textContent=`${m}:${s.toString().padStart(2,'0')}`;tel.className='t-time'+(mode==='rest'?' rest':'');
   document.getElementById('tlbl').textContent=mode==='rest'?'ОТДЫХ':'РАБОТА';
+  // Синхронизируем вкладки с реальным режимом
+  document.getElementById('ttT').classList.toggle('on',mode==='work');
+  document.getElementById('ttRst').classList.toggle('on',mode==='rest');
+  document.getElementById('ttR').classList.remove('on');
   const fl=document.getElementById('tfl');const pct=total>0?sec/total:1;
   fl.style.strokeDasharray=CIRC;fl.style.strokeDashoffset=CIRC*(1-pct);
   fl.className='t-fill'+(mode==='rest'?' rest':sec<=5?' warn':'');
@@ -1464,16 +1564,22 @@ function pauseT(){WM.running=false;clearIV();document.getElementById('tbtn').tex
 function clearIV(){if(WM.iv){clearInterval(WM.iv);WM.iv=null;}WM.running=false;}
 function skipT(){clearIV();WM.mode==='work'?doneTimedSet():resumeRest();}
 function doneTimedSet(){WM.doneSets++;toast('⏰ Время!');if(WM.cset>=WM.tsets){setTimeout(()=>nextEx(),700);}else{WM.cset++;const ex=WM.exs[WM.idx]||{};WM.total=ex.rest||60;WM.sec=WM.total;WM.mode='rest';rTD(WM.sec,WM.total,'rest');rTSets();document.getElementById('tbtn').textContent='▶ Старт';}}
-function resumeRest(){playSound('work');const ex=WM.exs[WM.idx]||{};WM.total=ex.time||30;WM.sec=WM.total;WM.mode='work';rTD(WM.sec,WM.total,'work');rTSets();document.getElementById('tbtn').textContent='▶ Старт';toast('💪 Следующий подход!');}
-function nextEx(){clearIV();WM.idx++;WM.idx>=WM.exs.length?showDone():loadEx(WM.idx);}
-function prevEx(){clearIV();if(WM.idx>0){WM.idx--;loadEx(WM.idx);}}
-function showDone(){
-  clearIV();if(aFr){cancelAnimationFrame(aFr);aFr=null;}
-  document.getElementById('exSc').style.display='none';document.getElementById('exNav').style.display='none';
-  document.getElementById('wmDone').classList.add('on');document.getElementById('pgbf').style.width='100%';
-  const el=Math.round((Date.now()-WM.t0)/60000);
-  document.getElementById('csE').textContent=WM.exs.length;document.getElementById('csT').textContent=el||1;document.getElementById('csS').textContent=WM.doneSets;
-  setTimeout(()=>playSound('complete'),300);
+function resumeRest(){
+  const ex=WM.exs[WM.idx]||{};
+  if(!ex.time){
+    // Упражнение на повторения — возврат к счётчику повторений
+    setTT('reps');
+    rSets();
+    playSound('work');
+    toast('💪 Следующий подход!');
+    return;
+  }
+  // Упражнение на время — запускаем рабочий интервал
+  playSound('work');
+  WM.total=ex.time;WM.sec=WM.total;WM.mode='work';
+  rTD(WM.sec,WM.total,'work');rTSets();
+  document.getElementById('tbtn').textContent='▶ Старт';
+  toast('💪 Следующий подход!');
 }
 function finWO(){
   const el=Math.round((Date.now()-WM.t0)/60000);
