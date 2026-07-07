@@ -1474,9 +1474,9 @@ function startAnim(tp,em,muscles){
 
 // ── WORKOUT MODE ──────────────────────────────────────
 let WM={exs:[],idx:0,cset:1,tsets:3,doneSets:0,running:false,sec:0,total:0,mode:'work',iv:null,t0:null,dayT:''};
-function startOne(name,di){const day=(window._plan?.days||[])[di];const ex=day?.exs?.find(e=>e.n===name);if(!ex)return;launchWM([ex],name);}
-function launchWM(exs,title){
-  WM={exs,idx:0,cset:1,tsets:3,doneSets:0,running:false,sec:0,total:0,mode:'work',iv:null,t0:Date.now(),dayT:title};
+function startOne(name,di){const day=(window._plan?.days||[])[di];if(!day||!day.exs)return;const idx=day.exs.findIndex(e=>e.n===name);if(idx<0)return;launchWM(day.exs,day.title,idx);}
+function launchWM(exs,title,startIdx=0){
+  WM={exs,idx:startIdx,cset:1,tsets:3,doneSets:0,running:false,sec:0,total:0,mode:'work',iv:null,t0:Date.now(),dayT:title,lock:false};
   document.getElementById('wiz').style.display='none';
   document.getElementById('planView').classList.remove('on');
   document.getElementById('wkm').classList.add('on');
@@ -1485,10 +1485,11 @@ function launchWM(exs,title){
   document.getElementById('exSc').style.display='flex';
   document.getElementById('exNav').style.display='flex';
   document.getElementById('wmT').textContent=title;
-  loadEx(0);
+  loadEx(startIdx);
 }
 function loadEx(idx){
   if(idx>=WM.exs.length){showDone();return;}
+  WM.lock=false;
   clearIV();
   const ex=WM.exs[idx];
   WM.tsets=ex.s||3;WM.cset=1;
@@ -1547,7 +1548,7 @@ function rTD(sec,total,mode){
     else{ml.textContent='💪 РАБОТА';ml.style.background='rgba(200,241,53,0.08)';ml.style.color='var(--lime)';}
   }
 }
-function doneSet(){WM.doneSets++;playSound('set_done');if(WM.cset>=WM.tsets){toast('✅ Все подходы!');setTimeout(()=>nextEx(),600);}else{WM.cset++;rSets();setTT('rest');startTimer();toast(`Подход ${WM.cset-1} ✓ — отдыхай!`);}}
+function doneSet(){if(WM.lock)return;WM.doneSets++;playSound('set_done');if(WM.cset>=WM.tsets){WM.lock=true;toast('✅ Все подходы!');setTimeout(()=>{WM.lock=false;nextEx();},600);}else{WM.cset++;rSets();setTT('rest');startTimer();toast(`Подход ${WM.cset-1} ✓ — отдыхай!`);}}
 function togTimer(){WM.running?pauseT():startTimer();}
 function startTimer(){
   if(WM.running)return;
@@ -1563,7 +1564,7 @@ function startTimer(){
 function pauseT(){WM.running=false;clearIV();document.getElementById('tbtn').textContent='▶ Продолжить';}
 function clearIV(){if(WM.iv){clearInterval(WM.iv);WM.iv=null;}WM.running=false;}
 function skipT(){clearIV();WM.mode==='work'?doneTimedSet():resumeRest();}
-function doneTimedSet(){WM.doneSets++;toast('⏰ Время!');if(WM.cset>=WM.tsets){setTimeout(()=>nextEx(),700);}else{WM.cset++;const ex=WM.exs[WM.idx]||{};WM.total=ex.rest||60;WM.sec=WM.total;WM.mode='rest';rTD(WM.sec,WM.total,'rest');rTSets();document.getElementById('tbtn').textContent='▶ Старт';}}
+function doneTimedSet(){if(WM.lock)return;WM.doneSets++;toast('⏰ Время!');if(WM.cset>=WM.tsets){WM.lock=true;setTimeout(()=>{WM.lock=false;nextEx();},700);}else{WM.cset++;const ex=WM.exs[WM.idx]||{};WM.total=ex.rest||60;WM.sec=WM.total;WM.mode='rest';rTD(WM.sec,WM.total,'rest');rTSets();document.getElementById('tbtn').textContent='▶ Старт';}}
 function resumeRest(){
   const ex=WM.exs[WM.idx]||{};
   if(!ex.time){
