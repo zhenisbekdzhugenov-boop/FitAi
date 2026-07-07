@@ -1581,6 +1581,16 @@ function resumeRest(){
   document.getElementById('tbtn').textContent='▶ Старт';
   toast('💪 Следующий подход!');
 }
+function nextEx(){clearIV();WM.idx++;WM.idx>=WM.exs.length?showDone():loadEx(WM.idx);}
+function prevEx(){clearIV();if(WM.idx>0){WM.idx--;loadEx(WM.idx);}}
+function showDone(){
+  clearIV();if(aFr){cancelAnimationFrame(aFr);aFr=null;}
+  document.getElementById('exSc').style.display='none';document.getElementById('exNav').style.display='none';
+  document.getElementById('wmDone').classList.add('on');document.getElementById('pgbf').style.width='100%';
+  const el=Math.round((Date.now()-WM.t0)/60000);
+  document.getElementById('csE').textContent=WM.exs.length;document.getElementById('csT').textContent=el||1;document.getElementById('csS').textContent=WM.doneSets;
+  setTimeout(()=>playSound('complete'),300);
+}
 function finWO(){
   const el=Math.round((Date.now()-WM.t0)/60000);
   db.workouts.push({id:Date.now(),type:'💪 Силовая',duration:el||30,weight:db.profile.weight||0,notes:WM.dayT,date:new Date().toISOString()});
